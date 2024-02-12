@@ -38,6 +38,9 @@ def difference():
 
 @app.route('/test', methods=['GET'])
 def test():
+    result = word_vectors.most_similar_cosmul(positive=['woman', 'king'], negative=['man'])
+    most_similar_key, similarity = result[0]  # look at the first match
+    print(f"{most_similar_key}: {similarity:.4f}")
     return 'Test endpoint is working'
 
 
