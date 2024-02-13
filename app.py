@@ -31,7 +31,7 @@ def similarity():
     data = request.get_json()
     word1 = data['word1']
     word2 = data['word2']
-    similarity_score = word_vectors.similarity(word1, word2)
+    similarity_score = new_kv.similarity(word1, word2)
     # Convert numpy.float32 to Python float
     similarity_score = float(similarity_score)
     return jsonify({'similarity': similarity_score})
@@ -44,7 +44,7 @@ def difference():
     try:
         # Find words most similar to word2 when word1 is "subtracted" from it
         # This is akin to finding what makes word2 different from word1
-        results = word_vectors.most_similar(positive=[word2], negative=[word1], topn=1)
+        results = new_kv.most_similar(positive=[word2], negative=[word1], topn=1)
         
         difference_word = results[0][0]  # The word that represents the difference
         difference_score = float(results[0][1])  # The similarity score of the difference word
@@ -55,7 +55,7 @@ def difference():
 
 @app.route('/test', methods=['GET'])
 def test():
-    result = word_vectors.most_similar_cosmul(positive=['woman', 'king'], negative=['man'])
+    result = new_kv.most_similar_cosmul(positive=['queen'], negative=['king'])
     most_similar_key, similarity = result[0]  # look at the first match
     print(f"{most_similar_key}: {similarity:.4f}")
     return 'Test endpoint is working'
