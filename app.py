@@ -8,25 +8,7 @@ import numpy as np
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
-
-model = gensim.downloader.load('glove-wiki-gigaword-300')
-nltk.download('words')
 english_words = set(words.words())
-
-# Filter the model's vocabulary
-filtered_vocab = {
-    word: model[word] for word in model.key_to_index
-    if word in english_words and len(word) > 2
-}
-new_kv = KeyedVectors(vector_size=model.vector_size)
-
-# Prepare lists of keys (words) and their vectors
-keys = list(filtered_vocab.keys())
-vectors = [filtered_vocab[word] for word in keys]
-new_kv.sort_by_descending_frequency()
-# Add all vectors in one batch
-new_kv.add_vectors(keys, vectors)
-
 def is_valid_word(word):
     """
     Check if a word is a valid Scrabble word using WordNet to attempt to exclude proper nouns.
@@ -36,13 +18,30 @@ def is_valid_word(word):
     synsets = wordnet.synsets(word)
     if not synsets:
         return False  # Word is not recognized by WordNet
-    
+    if word not in english_words:
+        return False
     # Check if the word is likely not a proper noun
     # Note: This isn't foolproof, as it relies on WordNet's classification
     for synset in synsets:
         if 'noun' in synset.lexname() and not synset.name().startswith(word.lower()):
             return True  # Word has a noun meaning that is not a proper noun
     return False
+
+model = gensim.downloader.load('glove-wiki-gigaword-300')
+
+# Filter the model's vocabulary
+filtered_vocab = {
+    word: model[word] for word in model.key_to_index
+    if is_valid_word(word) and len(word) > 2
+}
+new_kv = KeyedVectors(vector_size=model.vector_size)
+
+# Prepare lists of keys (words) and their vectors
+keys = list(filtered_vocab.keys())
+vectors = [filtered_vocab[word] for word in keys]
+new_kv.sort_by_descending_frequency()
+# Add all vectors in one batch
+new_kv.add_vectors(keys, vectors)
 
 @app.route('/similarity', methods=['POST'])
 def similarity():
