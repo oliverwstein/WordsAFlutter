@@ -4,6 +4,7 @@ import gensim.downloader
 from gensim.models import KeyedVectors
 import nltk
 from nltk.corpus import words
+import numpy as np
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
@@ -33,7 +34,7 @@ def similarity():
     word2 = data['word2']
     similarity_score = new_kv.similarity(word1, word2)
     # Convert numpy.float32 to Python float
-    similarity_score = float(similarity_score)
+    similarity_score = float(np.round(similarity_score, 2))
     return jsonify({'similarity': similarity_score})
 
 @app.route('/difference', methods=['POST'])
@@ -42,13 +43,25 @@ def difference():
     word1 = data['word1']
     word2 = data['word2']
     try:
-        # Find words most similar to word2 when word1 is "subtracted" from it
-        # This is akin to finding what makes word2 different from word1
-        results = new_kv.most_similar(positive=[word2], negative=[word1], topn=1)
-        
+        results = new_kv.most_similar(positive=word1, negative = word2, restrict_vocab=50000)
         difference_word = results[0][0]  # The word that represents the difference
-        difference_score = float(results[0][1])  # The similarity score of the difference word
+        difference_score = np.round(results[0][1], 2)  # The similarity score of the difference word
         return jsonify({'difference': difference_word, 'score': difference_score})
+    except Exception as e:
+        print(f"Error processing difference request: {e}")
+        return jsonify({"error": "Error processing request, make sure the words exist in the model"}), 500
+    
+@app.route('/difference', methods=['POST'])
+def differences():
+    data = request.get_json()
+    word1 = data['word1']
+    word2 = data['word2']
+    try:
+        results = new_kv.most_similar(positive=word1, negative = word2, restrict_vocab=50000)
+        top10Words = [results[i][0] for i in range(10)]
+        difference_word = results[0][0]  # The word that represents the difference
+        difference_score = np.round(results[0][1], 2)  # The similarity score of the difference word
+        return jsonify({'results': top10Words})
     except Exception as e:
         print(f"Error processing difference request: {e}")
         return jsonify({"error": "Error processing request, make sure the words exist in the model"}), 500
