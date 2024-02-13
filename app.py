@@ -1,13 +1,30 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS  # Import CORS
+import gensim.downloader
 from gensim.models import KeyedVectors
+import nltk
+from nltk.corpus import words
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
-# Load the Word2Vec model (this may take a few minutes)
-model_path = 'GoogleNews-vectors-negative300.bin'
-word_vectors = KeyedVectors.load_word2vec_format(model_path, binary=True)
+model = gensim.downloader.load('glove-wiki-gigaword-300')
+nltk.download('words')
+english_words = set(words.words())
+
+# Filter the model's vocabulary
+filtered_vocab = {
+    word: model[word] for word in model.key_to_index
+    if word in english_words
+}
+new_kv = KeyedVectors(vector_size=model.vector_size)
+
+# Prepare lists of keys (words) and their vectors
+keys = list(filtered_vocab.keys())
+vectors = [filtered_vocab[word] for word in keys]
+new_kv.sort_by_descending_frequency()
+# Add all vectors in one batch
+new_kv.add_vectors(keys, vectors)
 
 @app.route('/similarity', methods=['POST'])
 def similarity():
