@@ -89,6 +89,36 @@ def differences():
         print(f"Error processing difference request: {e}")
         return jsonify({"error": "Error processing request, make sure the words exist in the model"}), 500
 
+@app.route('/hints', methods=['POST'])
+def hints():
+    data = request.get_json()
+    word = str(data['word']).lower()
+
+    # Ensure the word exists in the model to avoid errors
+    if word not in new_kv.key_to_index:
+        return jsonify({'error': 'Word not found in the vocabulary'}), 404
+
+    # Calculate cosine similarities for the word against all words in the filtered model
+    cosine_similarities = new_kv.cosine_similarities(new_kv.get_vector(word), new_kv.vectors)
+    sorted_indices = np.argsort(-cosine_similarities)
+    
+    # Select indices at exponential intervals to cover a broad range of similarities
+    percentile_indices = [2**i for i in range(0, 10) if 2**i < len(sorted_indices)]
+    
+    percentile_words = [word]  # Start with the input word
+    chosen_word_indices = [new_kv.key_to_index[word]]
+    
+    for a in range(len(percentile_indices) - 1):
+        binIndices = sorted_indices[percentile_indices[a]:percentile_indices[a+1]]
+        binWords = [new_kv.index_to_key[i] for i in binIndices if i not in chosen_word_indices]
+        if binWords:
+            # Calculate the word most dissimilar to those already chosen
+            dissimilar_word = new_kv.most_similar_to_given(percentile_words[-1], binWords)
+            percentile_words.append(dissimilar_word)
+            chosen_word_indices.append(new_kv.key_to_index[dissimilar_word])
+
+    return jsonify({'percentile_words': percentile_words})
+
 @app.route('/test', methods=['GET'])
 def test():
     result = new_kv.most_similar_cosmul(positive=['queen'], negative=['king'])
