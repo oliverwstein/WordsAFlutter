@@ -109,7 +109,7 @@ def hints():
     sorted_indices = np.argsort(-cosine_similarities)
     
     # Select indices at exponential intervals to cover a broad range of similarities
-    percentile_indices = [2**i for i in range(0, 10) if 2**i < len(sorted_indices)]
+    percentile_indices = [int(2**i) for i in np.array(list(range(0, 10)))/2 if 2**i < len(sorted_indices)]
     
     percentile_words = [word]  # Start with the input word
     chosen_word_indices = [new_kv.key_to_index[word]]
