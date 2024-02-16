@@ -1,3 +1,4 @@
+import random
 from flask import Flask, request, jsonify
 from flask_cors import CORS  # Import CORS
 import gensim.downloader
@@ -89,6 +90,11 @@ def differences():
         print(f"Error processing difference request: {e}")
         return jsonify({"error": "Error processing request, make sure the words exist in the model"}), 500
 
+@app.route('/random_word', methods=['GET'])
+def random_word():
+    random_word = random.choice(list(new_kv.key_to_index.keys()))
+    return jsonify({'random_word': random_word})
+
 @app.route('/hints', methods=['POST'])
 def hints():
     data = request.get_json()
@@ -116,8 +122,8 @@ def hints():
             dissimilar_word = new_kv.most_similar_to_given(percentile_words[-1], binWords)
             percentile_words.append(dissimilar_word)
             chosen_word_indices.append(new_kv.key_to_index[dissimilar_word])
-
-    return jsonify({'percentile_words': percentile_words})
+    percentile_words.reverse()
+    return jsonify({'hints': percentile_words})
 
 @app.route('/test', methods=['GET'])
 def test():
