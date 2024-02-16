@@ -9,30 +9,37 @@ import numpy as np
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 english_words = set(words.words())
-def is_valid_word(word):
+model = gensim.downloader.load('glove-wiki-gigaword-300')
+
+def is_valid_word(word, english_words):
     """
-    Check if a word is a valid Scrabble word using WordNet to attempt to exclude proper nouns.
-    This function returns True if the word has at least one synset that is not tagged as a proper noun.
+    Check if a word is a valid Scrabble word by including nouns, adjectives, and verbs,
+    and using WordNet to attempt to exclude proper nouns.
+    This function returns True if the word has at least one synset in these categories
+    and is not a proper noun.
     """
     # Check if the word has synsets (i.e., is recognized by WordNet)
     synsets = wordnet.synsets(word)
     if not synsets:
         return False  # Word is not recognized by WordNet
     if word not in english_words:
-        return False
-    # Check if the word is likely not a proper noun
-    # Note: This isn't foolproof, as it relies on WordNet's classification
+        return False  # Word is not in the list of English words
+    
+    valid_categories = ['noun', 'adj', 'verb', 'adv']
     for synset in synsets:
-        if 'noun' in synset.lexname() and not synset.name().startswith(word.lower()):
-            return True  # Word has a noun meaning that is not a proper noun
+        lexname = synset.lexname()
+        if any(category in lexname for category in valid_categories):
+            # If including proper nouns as valid, remove or adjust this check
+            if 'noun' in lexname and not any(tag in lexname for tag in ['noun.person', 'noun.organization', 'noun.place']):
+                return True  # Word is a noun and not identified as a proper noun
+            elif 'noun' not in lexname:
+                return True  # Word is an adjective or verb
     return False
-
-model = gensim.downloader.load('glove-wiki-gigaword-300')
 
 # Filter the model's vocabulary
 filtered_vocab = {
     word: model[word] for word in model.key_to_index
-    if is_valid_word(word) and len(word) > 2
+    if is_valid_word(word, english_words) and len(word) > 2
 }
 new_kv = KeyedVectors(vector_size=model.vector_size)
 
@@ -42,6 +49,8 @@ vectors = [filtered_vocab[word] for word in keys]
 new_kv.sort_by_descending_frequency()
 # Add all vectors in one batch
 new_kv.add_vectors(keys, vectors)
+print("wordCount", len(keys))
+print(keys[0:10])
 
 @app.route('/similarity', methods=['POST'])
 def similarity():
