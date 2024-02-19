@@ -92,7 +92,7 @@ def differences():
 
 @app.route('/random_word', methods=['GET'])
 def random_word():
-    random_word = random.choice(list(new_kv.key_to_index.keys()))
+    random_word = random.choice(list(new_kv.key_to_index.keys())[100:2000])
     return jsonify({'random_word': random_word})
 
 @app.route('/hints', methods=['POST'])
